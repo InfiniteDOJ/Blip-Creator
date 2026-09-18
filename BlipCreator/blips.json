@@ -1,0 +1,26 @@
+[
+    {
+        "color": 0,
+        "coords": {
+            "x": 1000.8410034179688,
+            "y": -1550.9486083984376,
+            "z": 30.78127098083496
+        },
+        "sprite": 351,
+        "shortRange": false,
+        "name": "Weed Shop",
+        "scale": 1.4
+    },
+    {
+        "color": 39,
+        "coords": {
+            "x": 315.33758544921877,
+            "y": -1098.154052734375,
+            "z": 29.40106964111328
+        },
+        "sprite": 12,
+        "shortRange": false,
+        "name": "Laundry Mat",
+        "scale": 1.3
+    }
+]
