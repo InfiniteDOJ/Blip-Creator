@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Blip Creator</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+
+    html, body {
+        background: transparent;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hidden { display: none !important; }
+
+    .container {
+        position: relative;
+        width: 550px;
+        max-height: 85vh;
+        background: rgba(20, 20, 25, 0.96);
+        border-radius: 14px;
+        padding: 24px;
+        color: #fff;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        overflow-y: auto;
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #ccc;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+    }
+    .close-btn:hover {
+        background: #d93b3b;
+        color: white;
+        border-color: #d93b3b;
+    }
+
+    .header {
+        margin-bottom: 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding-bottom: 14px;
+        padding-left: 40px;
+    }
+    h1 { font-size: 22px; font-weight: 600; color: #4da6ff; }
+    #subtitle { font-size: 12px; color: #888; margin-top: 4px; }
+
+    .menu-item {
+        padding: 14px 18px;
+        background: rgba(255,255,255,0.04);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-size: 15px;
+        border-left: 3px solid transparent;
+    }
+
+    .menu-item:hover {
+        background: rgba(77, 166, 255, 0.15);
+        border-left-color: #4da6ff;
+        transform: translateX(3px);
+    }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px;
+        color: #fff;
+        font-size: 14px;
+        outline: none;
+        transition: border 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #4da6ff; }
+    .form-group input[type="range"] { width: 100%; }
+
+    .checkbox-row { display: flex; align-items: center; gap: 8px; }
+    .checkbox-row input { width: auto; }
+
+    .button-row { display: flex; gap: 10px; margin-top: 20px; }
+    .btn {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .btn-primary { background: #4da6ff; color: white; }
+    .btn-primary:hover { background: #3a8edd; }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: #ccc; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); }
+    .btn-danger { background: #d93b3b; color: white; }
+    .btn-danger:hover { background: #b62e2e; }
+
+    .blip-actions { display: flex; gap: 6px; margin-left: auto; }
+    .blip-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,0.04); border-radius: 8px; margin-bottom: 8px; }
+    .blip-row .name { flex: 1; font-size: 14px; }
+    .small-btn { padding: 6px 12px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; color: white; }
+    .small-btn.edit { background: #4da6ff; }
+    .small-btn.delete { background: #d93b3b; }
+
+    .scale-value { display: inline-block; margin-left: 8px; color: #4da6ff; font-weight: 600; }
+</style>
+</head>
+<body>
+    <div id="app" class="hidden">
+        <div class="container">
+            <button id="closeBtn" class="close-btn" title="Close (ESC)">?</button>
+            <div class="header">
+                <h1 id="title">Blip Creator</h1>
+                <p id="subtitle"></p>
+            </div>
+            <div id="content"></div>
+        </div>
+    </div>
+
+<script>
+// ============================================================================
+// BLIP CREATOR NUI
+// ============================================================================
+
+console.log('[BlipCreator NUI] script loaded');
+
+const app      = document.getElementById('app');
+const content  = document.getElementById('content');
+const title    = document.getElementById('title');
+const subtitle = document.getElementById('subtitle');
+const closeBtn = document.getElementById('closeBtn');
+
+let currentData = null;
+let isEditMode  = false;
+let editId      = null;
+
+function post(endpoint, data = {}) {
+    return fetch(`https://${GetParentResourceName()}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify(data)
+    }).then(r => r.json());
+}
+
+closeBtn.addEventListener('click', () => {
+    post('menuSelect', { value: 'close' });
+});
+
+window.addEventListener('message', (e) => {
+    console.log('[BlipCreator NUI] message received:', JSON.stringify(e.data));
+    const d = e.data;
+
+    if (d.action === 'openMenu') {
+        app.classList.remove('hidden');
+        title.textContent = d.title;
+        subtitle.textContent = d.subtitle || '';
+        renderMenu(d.elements);
+    } else if (d.action === 'openManage') {
+        app.classList.remove('hidden');
+        title.textContent = d.title;
+        subtitle.textContent = '';
+        renderManage(d.elements);
+    } else if (d.action === 'openEditor') {
+        app.classList.remove('hidden');
+        title.textContent = d.title;
+        subtitle.textContent = '';
+        isEditMode = d.isEdit;
+        editId = d.editId || null;
+        currentData = d.blipData;
+        renderEditor(d.blipData, d.sprites, d.colors);
+    } else if (d.action === 'closeMenu') {
+        app.classList.add('hidden');
+    }
+});
+
+function renderMenu(elements) {
+    content.innerHTML = '';
+    elements.forEach(el => {
+        const div = document.createElement('div');
+        div.className = 'menu-item';
+        div.textContent = el.label;
+        div.addEventListener('click', () => post('menuSelect', { value: el.value }));
+        content.appendChild(div);
+    });
+}
+
+function renderManage(elements) {
+    content.innerHTML = '';
+
+    elements.forEach(el => {
+        if (el.value === 'back') {
+            const div = document.createElement('div');
+            div.className = 'menu-item';
+            div.textContent = el.label;
+            div.addEventListener('click', () => post('menuSelect', { value: 'back' }));
+            content.appendChild(div);
+            return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'blip-row';
+
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = el.label;
+        row.appendChild(name);
+
+        const actions = document.createElement('div');
+        actions.className = 'blip-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'small-btn edit';
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            post('menuSelect', { value: 'edit', id: el.id });
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'small-btn delete';
+        delBtn.textContent = 'Delete';
+        delBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            if (confirm('Delete this blip?')) {
+                post('menuSelect', { value: 'delete', id: el.id });
+            }
+        });
+
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        row.appendChild(actions);
+        content.appendChild(row);
+    });
+}
+
+function renderEditor(data, sprites, colors) {
+    content.innerHTML = `
+        <div class="form-group">
+            <label>Blip Name</label>
+            <input type="text" id="blipName" value="${data.name}" maxlength="60">
+        </div>
+        <div class="form-group">
+            <label>Sprite</label>
+            <select id="blipSprite">
+                ${Object.entries(sprites).map(([id, name]) =>
+                    `<option value="${id}" ${parseInt(id) === data.sprite ? 'selected' : ''}>${id} - ${name}</option>`
+                ).join('')}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Color</label>
+            <select id="blipColor">
+                ${Object.entries(colors).map(([id, name]) =>
+                    `<option value="${id}" ${parseInt(id) === data.color ? 'selected' : ''}>${id} - ${name}</option>`
+                ).join('')}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Scale <span class="scale-value" id="scaleVal">${data.scale}</span></label>
+            <input type="range" id="blipScale" min="0.1" max="3.0" step="0.1" value="${data.scale}">
+        </div>
+        <div class="form-group checkbox-row">
+            <input type="checkbox" id="blipShort" ${data.shortRange ? 'checked' : ''}>
+            <label for="blipShort" style="margin:0;text-transform:none;">Short Range</label>
+        </div>
+        <div class="button-row">
+            <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="btn btn-primary" id="saveBtn">${isEditMode ? 'Update' : 'Create'}</button>
+        </div>
+    `;
+
+    const getData = () => ({
+        name: document.getElementById('blipName').value,
+        sprite: parseInt(document.getElementById('blipSprite').value),
+        color: parseInt(document.getElementById('blipColor').value),
+        scale: parseFloat(document.getElementById('blipScale').value),
+        shortRange: document.getElementById('blipShort').checked,
+        coords: data.coords
+    });
+
+    const liveUpdate = () => {
+        document.getElementById('scaleVal').textContent = document.getElementById('blipScale').value;
+        post('menuSelect', { value: 'updatePreview', blipData: getData() });
+    };
+
+    document.getElementById('blipScale').oninput = liveUpdate;
+    document.getElementById('blipSprite').onchange = liveUpdate;
+    document.getElementById('blipColor').onchange = liveUpdate;
+    document.getElementById('blipName').oninput = liveUpdate;
+    document.getElementById('blipShort').onchange = liveUpdate;
+
+    document.getElementById('cancelBtn').onclick = () => post('menuSelect', { value: 'cancel' });
+    document.getElementById('saveBtn').onclick = () => {
+        const data = getData();
+        if (isEditMode) {
+            post('updateBlip', { editId: editId, blipData: data });
+        } else {
+            post('menuSelect', { value: 'save', blipData: data });
+        }
+    };
+}
+</script>
+</body>
+</html>
